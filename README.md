@@ -76,6 +76,7 @@ Note: support for specific languages is strictly community maintained and can br
   - [x] `ocaml`
   - [x] `ocaml_interface`
   - [x] `odin`
+  - [x] `pascal`
   - [x] `php`
   - [x] `php_only`
   - [x] `prisma`
@@ -255,7 +256,6 @@ Note: support for specific languages is strictly community maintained and can br
   - [ ] `nqc`
   - [ ] `objc`
   - [ ] `ocamllex`
-  - [ ] `pascal`
   - [ ] `passwd`
   - [ ] `pem`
   - [ ] `perl`
