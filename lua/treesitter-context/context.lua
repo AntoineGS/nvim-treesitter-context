@@ -189,6 +189,25 @@ local function trim_contexts(context_ranges, context_lines, trim, top)
   end
 end
 
+--- Whether the last context line is also visible in the buffer below the
+--- context window.
+--- @param context_ranges Range4[]
+--- @param top_row integer
+--- @return boolean
+local function repeats_visible_lines(context_ranges, top_row)
+  local last = context_ranges[#context_ranges]
+  if not last then
+    return false
+  end
+
+  local height = 0
+  for _, range in ipairs(context_ranges) do
+    height = height + util.get_range_height(range)
+  end
+
+  return last[3] > top_row + height
+end
+
 --- @param range Range4
 --- @param bufnr integer
 --- @return Range4, string[]
@@ -405,7 +424,19 @@ function M.get(winid)
 
   local trim = contexts_height - max_lines
   if trim > 0 then
-    trim_contexts(context_ranges, context_lines, trim, config.trim_scope == 'outer')
+    if config.trim_scope == 'outer' then
+      local ranges, lines = vim.deepcopy(context_ranges), vim.deepcopy(context_lines)
+      trim_contexts(ranges, lines, trim, true)
+      if repeats_visible_lines(ranges, top_row) then
+        -- Dropping outer contexts moved the inner context up so that its tail
+        -- is also visible below the window; trim the inner context instead.
+        trim_contexts(context_ranges, context_lines, trim, false)
+      else
+        context_ranges, context_lines = ranges, lines
+      end
+    else
+      trim_contexts(context_ranges, context_lines, trim, false)
+    end
   end
 
   return context_ranges, tbl_flatten(context_lines)

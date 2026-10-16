@@ -612,3 +612,50 @@ describe('ts_context diagnostics', function()
     screen:expect({ any = '^local function foo%(%) +|' })
   end)
 end)
+
+describe('ts_context trimming', function()
+  it('does not repeat a visible line when outer contexts are trimmed', function()
+    clear()
+    exec_lua(tc_helpers.setup, { max_lines = 5, mode = 'topline' })
+    exec_lua(install_langs, 'lua')
+
+    local lines = {
+      'local function foo(a,',
+      '  b)',
+      '  local x = 1',
+      '  if a',
+      '    or b',
+      '    or c',
+      '    or d',
+      '    or e',
+      '    or f then',
+    }
+    for _ = 1, 30 do
+      lines[#lines + 1] = '    x = x + 1'
+    end
+    lines[#lines + 1] = '  end'
+    lines[#lines + 1] = 'end'
+
+    --- @type integer, [integer,integer,integer,integer][]
+    local first_visible, ranges = exec_lua(function(lines0)
+      vim.api.nvim_buf_set_lines(0, 0, -1, false, lines0)
+      vim.bo.filetype = 'lua'
+      -- `local x = 1` at the top: the function header is scrolled off and
+      -- would cover the first line of the tall `if`.
+      vim.fn.winrestview({ topline = 3, lnum = 15 })
+      local ranges0 = assert(require('treesitter-context.context').get())
+      local height = 0
+      for _, r in ipairs(ranges0) do
+        height = height + r[3] - r[1]
+      end
+      return vim.fn.line('w0') - 1 + height, ranges0
+    end, lines)
+
+    for _, r in ipairs(ranges) do
+      assert(
+        r[3] <= first_visible,
+        ('context rows %d-%d repeat buffer rows from %d'):format(r[1], r[3] - 1, first_visible)
+      )
+    end
+  end)
+end)
